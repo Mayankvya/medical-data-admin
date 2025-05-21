@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MedicalRecord, DatabaseConfig } from '@/lib/types';
-import { fetchRecords, deleteRecord } from '@/lib/supabase';
+import { fetchRecords} from '@/lib/supabase';
 
 interface DataTableProps {
   config: DatabaseConfig;
@@ -34,18 +34,18 @@ export default function DataTable({ config }: DataTableProps) {
     loadRecords();
   }, [page, config]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this record?')) {
-      return;
-    }
+  // const handleDelete = async (id: number) => {
+  //   if (!window.confirm('Are you sure you want to delete this record?')) {
+  //     return;
+  //   }
 
-    try {
-      await deleteRecord(config, id);
-      loadRecords();
-    } catch (err) {
-      setError('Error deleting record: ' + (err instanceof Error ? err.message : String(err)));
-    }
-  };
+  //   try {
+  //     await deleteRecord(config, id);
+  //     loadRecords();
+  //   } catch (err) {
+  //     setError('Error deleting record: ' + (err instanceof Error ? err.message : String(err)));
+  //   }
+  // };
 
   const totalPages = Math.ceil(totalRecords / pageSize);
 
@@ -106,7 +106,7 @@ export default function DataTable({ config }: DataTableProps) {
                     <td className="px-4 py-2 text-sm text-gray-900">{record.author ?? ""}</td>
                     <td className="px-4 py-2 text-sm text-gray-900">
                       <button
-                        onClick={() => record.id && handleDelete(record.id)}
+                        // onClick={() => record.id && handleDelete(record.id)}
                         className="text-red-600 hover:text-red-800"
                       >
                         Delete

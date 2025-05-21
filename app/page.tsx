@@ -1,101 +1,87 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import UploadForm from '@/components/UploadForm';
-import DataPreview from '@/components/DataPreview';
-import DataTable from '@/components/DataTable';
-import ConfigForm from '@/components/ConfigForm';
-import { MedicalRecord, DatabaseConfig } from '@/lib/types';
+import { MedicalRecord } from '@/lib/types';
 
-export default function Home() {
-  const [data, setData] = useState<MedicalRecord[]>([]);
-  const [config, setConfig] = useState<DatabaseConfig>({
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your.supabase.co',
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    tableName: process.env.NEXT_PUBLIC_SUPABASE_TABLE || 'home1_duplicate',
-  });
-  const [activeTab, setActiveTab] = useState<'upload' | 'database'>('upload');
 
-  // Load config from localStorage on mount
+import BulkPasteForm from '@/components/BulkPasteForm';
+import ManualAddForm from '@/components/ManualAddForm';
+import CombinedPreview from '@/components/CombinedPreview';
+
+import { fetchRecords } from '@/lib/supabase';
+import { supabaseConfig } from '@/lib/config';
+
+export default function Dashboard() {
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
+  const [fetched, setFetched] = useState<MedicalRecord[]>([]);
+  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'fetch' | 'bulk'>('csv');
+
   useEffect(() => {
-    const savedConfig = localStorage.getItem('supabaseConfig');
-    if (savedConfig) {
-      try {
-        setConfig(JSON.parse(savedConfig));
-      } catch (e) {
-        console.error('Error parsing saved config', e);
-      }
+    if (activeTab === 'fetch') {
+      fetchRecords(supabaseConfig)
+        .then(({ data }) => setFetched(data ?? []))
+        .catch((e) => console.error('Error fetching records:', e));
     }
-  }, []);
-
-  // Save config to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem('supabaseConfig', JSON.stringify(config));
-  }, [config]);
-
-  const handleDataLoaded = (loadedData: MedicalRecord[]) => {
-    setData(loadedData);
-  };
-
-  const handleUploadComplete = () => {
-    // Clear data and switch to database tab after upload
-    setData([]);
-    setActiveTab('database');
-  };
+  }, [activeTab]);
 
   return (
-    <main>
-      <div className="mb-6">
-        <ConfigForm config={config} onConfigChange={setConfig} />
-      </div>
-      
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            <button
-              onClick={() => setActiveTab('upload')}
-              className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                activeTab === 'upload'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Upload Data
-            </button>
-            <button
-              onClick={() => setActiveTab('database')}
-              className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                activeTab === 'database'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Database Records
-            </button>
-          </nav>
-        </div>
-        
-        {activeTab === 'upload' && (
-          <div className="mt-6">
-            <UploadForm config={config} onDataLoaded={handleDataLoaded} />
-            
-            {data.length > 0 && (
-              <DataPreview 
-                data={data} 
-                config={config} 
-                onUploadComplete={handleUploadComplete} 
-              />
-            )}
-          </div>
+    <main className="max-w-6xl mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold mb-4">Medical Records Dashboard</h1>
+
+      {/* Tabs */}
+      <nav className="flex space-x-4 border-b pb-2 mb-6">
+        <button
+          onClick={() => setActiveTab('csv')}
+          className={`px-4 py-2 font-medium ${activeTab === 'csv' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+        >
+          CSV Upload
+        </button>
+        <button
+          onClick={() => setActiveTab('bulk')}
+          className={`px-4 py-2 font-medium ${activeTab === 'bulk' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+        >
+          Bulk Paste
+        </button>
+        <button
+          onClick={() => setActiveTab('manual')}
+          className={`px-4 py-2 font-medium ${activeTab === 'manual' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+        >
+          Manual Add
+        </button>
+        <button
+          onClick={() => setActiveTab('fetch')}
+          className={`px-4 py-2 font-medium ${activeTab === 'fetch' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'}`}
+        >
+          Fetch Records
+        </button>
+      </nav>
+
+      {/* Preview (always visible or just for current data?) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Live Preview</h2>
+        <CombinedPreview
+          records={activeTab === 'fetch' ? fetched : records}
+        />
+      </section>
+
+      {/* Tab Content */}
+      <section>
+        {activeTab === 'csv' && (
+          <CsvUploadForm setRecords={setRecords} />
         )}
-        
-        {activeTab === 'database' && (
-          <div className="mt-6">
-            <DataTable config={config} />
-          </div>
+
+        {activeTab === 'bulk' && (
+          <BulkPasteForm records={records} setRecords={setRecords} />
         )}
-      </div>
+
+        {activeTab === 'manual' && (
+          <ManualAddForm records={records} setRecords={setRecords} />
+        )}
+
+        {activeTab === 'fetch' && (
+          <p className="text-gray-600">Records fetched from database are shown above in the preview.</p>
+        )}
+      </section>
     </main>
   );
 }
-      
